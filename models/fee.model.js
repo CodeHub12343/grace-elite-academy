@@ -17,6 +17,13 @@ const FeeSchema = new Schema(
   { timestamps: true }
 );
 
+// Uniqueness: prevent creating the same described fee for a student for the same due date
+// Applies only when description is provided (partial index)
+FeeSchema.index(
+  { studentId: 1, dueDate: 1, description: 1 },
+  { unique: true, partialFilterExpression: { description: { $type: 'string' } } }
+);
+
 module.exports = mongoose.model('Fee', FeeSchema);
 
 

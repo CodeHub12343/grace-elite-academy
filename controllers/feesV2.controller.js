@@ -14,11 +14,11 @@ function calculateLateFee(dueDate, balance) {
 
 exports.createFee = async (req, res) => {
   try {
-    const { studentId, classId, amount, dueDate, ...rest } = req.body;
+    const { studentId, classId, amount, dueDate, description, ...rest } = req.body;
 
     // If a specific student is provided, create a single fee
     if (studentId) {
-      const fee = await Fee.create({ studentId, amount, dueDate, ...rest });
+      const fee = await Fee.create({ studentId, amount, dueDate, description, ...rest });
       return res.status(201).json({ success: true, data: fee });
     }
 
@@ -31,7 +31,7 @@ exports.createFee = async (req, res) => {
         return res.status(404).json({ success: false, message: 'No students found for the specified scope' });
       }
 
-      const docs = students.map((s) => ({ studentId: s._id, amount, dueDate, ...rest }));
+      const docs = students.map((s) => ({ studentId: s._id, amount, dueDate, description, ...rest }));
       const result = await Fee.insertMany(docs, { ordered: false });
       return res.status(201).json({ success: true, count: result.length, data: result });
     }
