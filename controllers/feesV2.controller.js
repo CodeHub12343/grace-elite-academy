@@ -44,7 +44,19 @@ exports.createFee = async (req, res) => {
 
 exports.getStudentFees = async (req, res) => {
   try {
-    const fees = await Fee.find({ studentId: req.params.id }).sort('-createdAt');
+    const id = req.params.id;
+
+    // First, try treating id as a Student _id
+    let fees = await Fee.find({ studentId: id }).sort('-createdAt');
+
+    // Backward-compatibility: if none found, try mapping id as a User _id to Student
+    if (!fees.length) {
+      const student = await Student.findOne({ userId: id }).select('_id');
+      if (student) {
+        fees = await Fee.find({ studentId: student._id }).sort('-createdAt');
+      }
+    }
+
     const enriched = fees.map((f) => {
       const dynamicLate = calculateLateFee(f.dueDate, f.balance);
       const balanceWithLate = Math.max(0, f.amount + dynamicLate - f.amountPaid);
