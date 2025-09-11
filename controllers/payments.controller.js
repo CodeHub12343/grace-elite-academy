@@ -148,6 +148,26 @@ exports.getPaystackConfig = async (_req, res) => {
   }
 };
 
+// Debug endpoint to check server status
+exports.debugStatus = async (req, res) => {
+  try {
+    const status = {
+      server: 'running',
+      timestamp: new Date().toISOString(),
+      environment: process.env.NODE_ENV || 'development',
+      hasMongoUri: !!process.env.MONGO_URI,
+      hasPaystackSecret: !!process.env.PAYSTACK_SECRET_KEY,
+      hasPaystackPublic: !!process.env.PAYSTACK_PUBLIC_KEY,
+      hasJwtSecret: !!process.env.JWT_ACCESS_SECRET,
+      user: req.user ? { role: req.user.role, sub: req.user.sub } : null,
+      body: req.body
+    };
+    return res.status(200).json({ success: true, data: status });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message, stack: err.stack });
+  }
+};
+
 exports.webhook = async (req, res) => {
   try {
     const signature = req.headers['x-paystack-signature'];

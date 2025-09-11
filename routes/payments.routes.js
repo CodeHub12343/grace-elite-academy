@@ -23,6 +23,7 @@ router.post('/payments/webhook', pay.webhook);
 router.get('/payments/history', auth, authorizeRoles(['student']), pay.historyStudent);
 router.get('/payments/admin', auth, authorizeRoles(['admin']), pay.historyAdmin);
 router.get('/payments/config', auth, authorizeRoles(['admin', 'teacher', 'student']), pay.getPaystackConfig);
+router.post('/payments/debug', pay.debugStatus); // No auth for debugging
 router.get('/payments/analytics', auth, authorizeRoles(['admin']), pay.paymentAnalytics);
 router.get('/payments/export', auth, authorizeRoles(['admin']), pay.exportPayments);
 
