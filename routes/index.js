@@ -12,6 +12,9 @@ const cbtRoutes = require('./cbt.routes');
 const assignmentRoutes = require('./assignment.routes');
 const paymentsRoutes = require('./payments.routes');
 const feesV2Routes = require('./feesV2.routes');
+const feesV2Controller = require('../controllers/feesV2.controller');
+const auth = require('../middlewares/auth.middleware');
+const authorizeRoles = require('../middlewares/role.middleware');
 const filesRoutes = require('./files.routes');
 const notificationsRoutes = require('./notifications.routes');
 const reportsRoutes = require('./reports.routes');
@@ -43,6 +46,9 @@ router.use(assignmentRoutes);
 router.use(paymentsRoutes);
 // Mount v2 routes under a versioned prefix to avoid path collisions
 router.use('/v2', feesV2Routes);
+
+// Backward-compatible: expose v2 student fees at legacy path
+router.get('/fees/student/:id', auth, authorizeRoles(['admin', 'teacher', 'student']), feesV2Controller.getStudentFees);
 router.use(filesRoutes);
 router.use(notificationsRoutes);
 router.use(reportsRoutes);

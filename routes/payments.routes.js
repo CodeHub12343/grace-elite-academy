@@ -3,6 +3,7 @@ const auth = require('../middlewares/auth.middleware');
 const authorizeRoles = require('../middlewares/role.middleware');
 const fees = require('../controllers/fees.controller');
 const pay = require('../controllers/payments.controller');
+const payV2 = require('../controllers/paymentsV2.controller');
 
 const router = Router();
 
@@ -17,7 +18,8 @@ router.get('/fees/invoices/:id', auth, authorizeRoles(['admin', 'teacher', 'stud
 
 // Payments
 router.post('/payments/initiate/:invoiceId', auth, authorizeRoles(['student']), pay.initiatePayment);
-router.post('/payments/initiate', auth, authorizeRoles(['student', 'admin']), pay.initiatePaymentFromFee);
+// Backward-compatible: use V2 initiate to avoid invoice creation errors
+router.post('/payments/initiate', auth, authorizeRoles(['student', 'admin']), payV2.initiate);
 router.get('/payments/verify/:reference', auth, authorizeRoles(['admin', 'teacher', 'student']), pay.verifyPayment);
 router.post('/payments/webhook', pay.webhook);
 router.get('/payments/history', auth, authorizeRoles(['student']), pay.historyStudent);
