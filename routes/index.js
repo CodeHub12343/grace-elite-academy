@@ -49,6 +49,8 @@ router.use('/v2', feesV2Routes);
 
 // Backward-compatible: expose v2 student fees at legacy path
 router.get('/fees/student/:id', auth, authorizeRoles(['admin', 'teacher', 'student']), feesV2Controller.getStudentFees);
+// Backward-compatible: expose v2 fee creation at legacy path
+router.post('/fees', auth, authorizeRoles(['admin']), feesV2Controller.createFee);
 router.use(filesRoutes);
 router.use(notificationsRoutes);
 router.use(reportsRoutes);
