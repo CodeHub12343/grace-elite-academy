@@ -31,8 +31,6 @@ app.use(morgan('dev'));
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true }));
 // Note: Avoid xss-clean with Express 5; handle sanitization manually below
-app.use(cookieParser());
-
 // Basic request sanitization wrapper (do not reassign getter-backed props)
 app.use((req, _res, next) => {
   if (req.body) {

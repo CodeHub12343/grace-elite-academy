@@ -41,7 +41,8 @@ router.use(examRoutes);
 router.use(cbtRoutes);
 router.use(assignmentRoutes);
 router.use(paymentsRoutes);
-router.use(feesV2Routes);
+// Mount v2 routes under a versioned prefix to avoid path collisions
+router.use('/v2', feesV2Routes);
 router.use(filesRoutes);
 router.use(notificationsRoutes);
 router.use(reportsRoutes);
