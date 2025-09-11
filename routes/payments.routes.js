@@ -17,6 +17,7 @@ router.get('/fees/invoices/:id', auth, authorizeRoles(['admin', 'teacher', 'stud
 
 // Payments
 router.post('/payments/initiate/:invoiceId', auth, authorizeRoles(['student']), pay.initiatePayment);
+router.post('/payments/initiate', auth, authorizeRoles(['student', 'admin']), pay.initiatePaymentFromFee);
 router.get('/payments/verify/:reference', auth, authorizeRoles(['admin', 'teacher', 'student']), pay.verifyPayment);
 router.post('/payments/webhook', pay.webhook);
 router.get('/payments/history', auth, authorizeRoles(['student']), pay.historyStudent);

@@ -40,6 +40,85 @@ exports.initiatePayment = async (req, res) => {
   }
 };
 
+// New endpoint for frontend compatibility: POST /payments/initiate with { studentId, feeId, amount }
+exports.initiatePaymentFromFee = async (req, res) => {
+  try {
+    const { studentId, feeId, amount } = req.body;
+    
+    if (!studentId || !feeId || !amount) {
+      return res.status(400).json({ success: false, message: 'studentId, feeId, and amount are required' });
+    }
+
+    // Verify student exists and user has access
+    const student = await Student.findById(studentId).populate('userId');
+    if (!student) return res.status(404).json({ success: false, message: 'Student not found' });
+
+    // If user is student, ensure they can only pay their own fees
+    if (req.user?.role === 'student') {
+      if (student.userId._id.toString() !== req.user.sub) {
+        return res.status(403).json({ success: false, message: 'Forbidden' });
+      }
+    }
+
+    // Find or create invoice for this fee
+    let invoice = await Invoice.findOne({ studentId, feeId });
+    if (!invoice) {
+      // Create invoice if it doesn't exist
+      const fee = await Fee.findById(feeId);
+      if (!fee) return res.status(404).json({ success: false, message: 'Fee not found' });
+      
+      invoice = await Invoice.create({
+        studentId,
+        feeId,
+        amount: Number(amount),
+        status: 'pending',
+        dueDate: new Date()
+      });
+    } else if (invoice.status === 'paid') {
+      return res.status(400).json({ success: false, message: 'Invoice already paid' });
+    }
+
+    const reference = generateReference('PAY');
+    const amountKobo = Math.round(Number(amount) * 100);
+    
+    // Use student's email
+    let email = 'student@example.com';
+    if (student.userId?.email) email = student.userId.email;
+
+    const init = await initializeTransaction({ 
+      email, 
+      amount: amountKobo, 
+      reference, 
+      callback_url: req.body?.callback_url 
+    });
+
+    await Payment.create({ 
+      studentId, 
+      invoiceId: invoice._id, 
+      amount: Number(amount), 
+      status: 'pending', 
+      transactionReference: reference, 
+      gatewayResponse: init.data 
+    });
+    
+    await Invoice.findByIdAndUpdate(invoice._id, { 
+      transactionReference: reference,
+      amount: Number(amount) // Update amount in case it changed
+    });
+
+    return res.status(200).json({ 
+      success: true, 
+      data: { 
+        authorization_url: init.data.authorization_url, 
+        reference 
+      } 
+    });
+  } catch (err) {
+    console.error('Payment initiation error:', err);
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
 exports.verifyPayment = async (req, res) => {
   try {
     const { reference } = req.params;
