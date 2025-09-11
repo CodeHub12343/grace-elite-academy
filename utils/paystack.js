@@ -9,8 +9,11 @@ function headers() {
   return { Authorization: `Bearer ${SECRET}` };
 }
 
-async function initializeTransaction({ email, amount, reference, callback_url }) {
+async function initializeTransaction({ email, amount, reference, callback_url, metadata }) {
   const payload = { email, amount, reference };
+  if (metadata && typeof metadata === 'object') {
+    payload.metadata = metadata;
+  }
   if (callback_url || DEFAULT_CALLBACK_URL) {
     payload.callback_url = callback_url || DEFAULT_CALLBACK_URL;
   }

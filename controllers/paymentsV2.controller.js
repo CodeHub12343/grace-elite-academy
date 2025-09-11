@@ -27,9 +27,13 @@ exports.initiate = async (req, res) => {
     if (amount > balanceWithLate) return res.status(400).json({ success: false, message: 'Amount exceeds balance' });
 
     const reference = ref();
-    const init = await initializeTransaction({ email: 'student@example.com', amount: Math.round(amount * 100), reference });
-    const tx = await Transaction.create({ studentId, feeId, amount, status: 'pending', paystackReference: reference });
-    await Fee.updateOne({ _id: feeId }, { $addToSet: { transactions: tx._id } });
+    const init = await initializeTransaction({
+      email: 'student@example.com',
+      amount: Math.round(amount * 100),
+      reference,
+      metadata: { studentId, feeId, amount }
+    });
+    // Do NOT create a local Transaction yet. Wait for webhook to confirm charge.
     return res.status(200).json({ success: true, data: { authorization_url: init.data.authorization_url, reference } });
   } catch (err) {
     return res.status(500).json({ success: false, message: err.message });
@@ -46,17 +50,29 @@ exports.webhook = async (req, res) => {
     const event = req.body;
     if (event.event === 'charge.success') {
       const reference = event.data.reference;
-      const tx = await Transaction.findOneAndUpdate({ paystackReference: reference }, { $set: { status: 'success', paymentDate: new Date() } }, { new: true });
-      if (tx) {
-        const fee = await Fee.findById(tx.feeId);
+      const md = event.data?.metadata || {};
+      const studentId = md.studentId;
+      const feeId = md.feeId;
+      const amount = Number(md.amount) || Math.round((event.data.amount || 0) / 100);
+
+      if (!studentId || !feeId) return res.status(200).json({ success: true });
+
+      // Create transaction now (confirmed)
+      const tx = await Transaction.create({ studentId, feeId, amount, status: 'success', paystackReference: reference, paymentDate: new Date() });
+      await Fee.updateOne({ _id: feeId }, { $addToSet: { transactions: tx._id } });
+
+      // Update fee balances
+      const fee = await Fee.findById(feeId);
+      if (fee) {
         const late = calcLate(fee.dueDate, Math.max(0, fee.amount - fee.amountPaid));
-        const newAmountPaid = fee.amountPaid + tx.amount;
-        const newBalance = Math.max(0, fee.amount + late - newAmountPaid);
+        const newAmountPaid = (fee.amountPaid || 0) + amount;
+        const newBalance = Math.max(0, (fee.amount || 0) + late - newAmountPaid);
         const status = newBalance <= 0 ? 'paid' : 'partial';
         await Fee.updateOne({ _id: fee._id }, { $set: { amountPaid: newAmountPaid, balance: newBalance, status, lateFee: late } });
-        await notify(tx.studentId, 'email', 'Payment receipt', `Your payment of ₦${tx.amount} was received. Balance: ₦${newBalance}.`, {});
-        emitToUser(tx.studentId, 'payment:success', { reference, amount: tx.amount, balance: newBalance });
       }
+
+      try { await notify(studentId, 'email', 'Payment receipt', `Your payment of ₦${amount} was received.`, {}); } catch (_) {}
+      try { emitToUser(studentId, 'payment:success', { reference, amount }); } catch (_) {}
     }
     return res.status(200).json({ success: true });
   } catch (err) {
